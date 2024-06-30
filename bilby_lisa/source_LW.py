@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import lal
 import lalsimulation as lalsim
 
@@ -244,7 +245,7 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     E = E[indbeg:indend]
 
     # FFT of TD LISA response following LAL routines
-    epoch = lal.LIGOTimeGPS(times[0])
+    epoch = lal.LIGOTimeGPS(geocent_time)
 
     A_lal = lal.CreateREAL8TimeSeries(
         "A", epoch, 0, deltaT, lal.DimensionlessUnit, len(A)
@@ -288,8 +289,17 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     lal.REAL8TimeFreqFFT(A_tilde, A_lal, plan)
     lal.REAL8TimeFreqFFT(E_tilde, E_lal, plan)
 
-    # Convert angles to SSB frame, don't care about time for now
-    _, ra, dec, psi = LISA_to_SSB(geocent_time, ra, dec, psi)
+    frequency_array_2 = np.arange(len(A_tilde.data.data)) * A_tilde.deltaF
+    frequency_bounds_2 = ((frequency_array_2 >= minimum_frequency) *
+                        (frequency_array_2 <= maximum_frequency))
+
+    A_tilde.data.data *= frequency_bounds_2
+    E_tilde.data.data *= frequency_bounds_2
+    
+    # plt.loglog(frequency_array_2, np.abs(A_tilde.data.data))
+
+    indnzero_res = np.argwhere(np.abs(A_tilde.data.data) > 0)
+    indbeg_res = indnzero_res[0, 0]
 
     A_new = np.zeros_like(frequency_array, dtype=complex)
     E_new = np.zeros_like(frequency_array, dtype=complex)
@@ -299,8 +309,9 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
                      "({} vs {}), ".format(len(A_tilde.data.data), len(frequency_array)) +
                      "probably because padded with zeros up to the next power of two length." +
                      " Truncating GWsignal array.")
-        A_new = A_tilde.data.data[:len(A_new)]
-        E_new = E_tilde.data.data[:len(E_new)]
+        A_new = A_tilde.data.data[indbeg_res:len(A_new)+indbeg_res]
+        E_new = E_tilde.data.data[indbeg_res:len(E_new)+indbeg_res]
+
     else:
         A_new[:len(A_tilde.data.data)] = A_tilde.data.data
         E_new[:len(E_tilde.data.data)] = E_tilde.data.data
@@ -314,6 +325,13 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
         A_new[frequency_bounds] *= time_shift
         E_new[frequency_bounds] *= time_shift
 
+    tape_fact = 1e-3
+    indA = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
+    indE = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
+
+    A_new[indA+1:] = [0] * (len(A_new) - indA - 1)
+    E_new[indE+1:] = [0] * (len(E_new) - indE - 1)
+
     _waveform_dict = {"LISA_A": A_new, "LISA_E": E_new}
 
     _implemented_channels = ["LISA_A", "LISA_E"]
@@ -322,4 +340,3 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     )
 
     return _waveform_dict
-
