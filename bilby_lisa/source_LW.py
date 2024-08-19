@@ -193,7 +193,7 @@ def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distan
     indnzero = np.argwhere(amp > 0)
     indbeg = indnzero[0, 0]
 
-    tape_fact = 1e-3
+    tape_fact = 1e-4
     indkeep = np.argwhere(amp > np.amax(amp) * tape_fact)
     indend = indkeep[-1, 0]
 
