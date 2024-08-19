@@ -30,7 +30,7 @@ def Fcross(lam,beta,psi):
     return -np.sin(2*psi)*Fplus_0pol(lam,beta)+np.cos(2*psi)*Fcross_0pol(lam,beta)
 
 
-def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosity_distance, 
+def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distance, 
                                        a_1, tilt_1, phi_12, a_2, tilt_2, phi_jl, theta_jn, phase, 
                                        ra, dec, psi, geocent_time, **kwargs):
 
@@ -40,15 +40,17 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
 
     # LISA arm length
     Larm=2.5E9
+    _implemented_channels = ["LISA_A", "LISA_E", "LISA_T"]
 
     waveform_kwargs = dict(
-        waveform_approximant="SEOBNRv5PHM",
+        waveform_approximant="SEOBNRv5HM",
         reference_frequency=1e-4,
         minimum_frequency=1e-4,
         maximum_frequency=frequency_array[-1],
         catch_waveform_errors=False,
         mode_array=None,
         pn_amplitude_order=0,
+        ifos=_implemented_channels,
     )
     waveform_kwargs.update(kwargs)
 
@@ -59,6 +61,8 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     catch_waveform_errors = waveform_kwargs['catch_waveform_errors']
     mode_array = waveform_kwargs['mode_array']
     pn_amplitude_order = waveform_kwargs['pn_amplitude_order']
+
+    waveform_kwargs.pop("ifos")
 
     if pn_amplitude_order != 0:
         # This is to mimic the behaviour in
@@ -88,11 +92,6 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     eccentricity = 0.0
     longitude_ascending_nodes = 0.0
     mean_per_ano = 0.0
-
-    # Check if conditioning is needed
-    condition = 0
-    if wf_gen.metadata["implemented_domain"] == 'time':
-        condition = 1
 
     # Adjust deltaT depending on sampling rate
     f_nyquist = maximum_frequency
@@ -126,7 +125,7 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
                      'meanPerAno' : mean_per_ano * u.rad,
                      'deltaT': deltaT *u.s,
                      # 'ModeArray': mode_array,
-                     'condition': condition
+                     'condition': 1
                      }
 
     if mode_array is not None:
@@ -297,12 +296,14 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     E_tilde.data.data *= frequency_bounds_2
     
     # plt.loglog(frequency_array_2, np.abs(A_tilde.data.data))
+    # plt.savefig("test.png")
 
     indnzero_res = np.argwhere(np.abs(A_tilde.data.data) > 0)
     indbeg_res = indnzero_res[0, 0]
 
     A_new = np.zeros_like(frequency_array, dtype=complex)
     E_new = np.zeros_like(frequency_array, dtype=complex)
+    T_new = np.zeros_like(frequency_array, dtype=complex)
 
     if len(A_tilde.data.data) > len(frequency_array):
         logger.debug("GWsignal waveform longer than bilby's `frequency_array`" +
@@ -319,30 +320,34 @@ def lisa_LW_gwsignal_binary_black_hole(frequency_array, mass_1, mass_2, luminosi
     A_new *= frequency_bounds
     E_new *= frequency_bounds
 
-    if condition:
-        dt = 1 / A_tilde.deltaF + float(A_tilde.epoch)
-        time_shift = np.exp(-1j * 2 * np.pi * dt * frequency_array[frequency_bounds])
-        A_new[frequency_bounds] *= time_shift
-        E_new[frequency_bounds] *= time_shift
+    dt = 1 / A_tilde.deltaF + float(A_tilde.epoch)
+    time_shift = np.exp(-1j * 2 * np.pi * dt * frequency_array[frequency_bounds])
+    A_new[frequency_bounds] *= time_shift
+    E_new[frequency_bounds] *= time_shift
 
     tape_fact = 1e-3
-    indA = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
-    indE = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
 
-    A_new[indA+1:] = [0] * (len(A_new) - indA - 1)
-    E_new[indE+1:] = [0] * (len(E_new) - indE - 1)
+    max_idx_A = np.argmax(np.abs(A_new))
+    max_idx_E = np.argmax(np.abs(E_new))
 
-    _waveform_dict = {"LISA_A": A_new, "LISA_E": E_new}
+    # Find the first index after max_idx_A where the condition is satisfied
+    indices_A = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)
+    indA = indices_A[indices_A > max_idx_A].min() if np.any(indices_A > max_idx_A) else len(A_new)
+    A_new[indA:] = 0
 
-    _implemented_channels = ["LISA_A", "LISA_E"]
+    indices_E = np.argwhere(np.abs(E_new) < np.amax(np.abs(E_new)) * tape_fact)
+    indE = indices_E[indices_E > max_idx_E].min() if np.any(indices_E > max_idx_E) else len(E_new)
+    E_new[indE:] = 0
+
+    _waveform_dict = {"LISA_A": A_new, "LISA_E": E_new, "LISA_T": T_new}
+
     _waveform_dict = LISAPolarizationDict(
         {key: _waveform_dict.get(key, None) for key in _implemented_channels}
     )
-
     return _waveform_dict
 
 
-def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, luminosity_distance, 
+def lisa_binary_black_hole_pseob_LW(frequency_array, mass_1, mass_2, luminosity_distance, 
                                        a_1, tilt_1, phi_12, a_2, tilt_2, phi_jl, theta_jn, phase, 
                                        ra, dec, psi, geocent_time, domega220, dtau220, domega330, 
                                        dtau330, domega210, dtau210, domega440, dtau440, domega550, 
@@ -356,15 +361,17 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
 
     # LISA arm length
     Larm=2.5E9
+    _implemented_channels = ["LISA_A", "LISA_E", "LISA_T"]
 
     waveform_kwargs = dict(
-        waveform_approximant="SEOBNRv5PHM",
+        waveform_approximant="SEOBNRv5HM",
         reference_frequency=1e-4,
         minimum_frequency=1e-4,
         maximum_frequency=frequency_array[-1],
         catch_waveform_errors=False,
         mode_array=None,
         pn_amplitude_order=0,
+        ifos=_implemented_channels,
     )
     waveform_kwargs.update(kwargs)
 
@@ -375,6 +382,8 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
     catch_waveform_errors = waveform_kwargs['catch_waveform_errors']
     mode_array = waveform_kwargs['mode_array']
     pn_amplitude_order = waveform_kwargs['pn_amplitude_order']
+
+    waveform_kwargs.pop("ifos")
 
     if pn_amplitude_order != 0:
         # This is to mimic the behaviour in
@@ -404,11 +413,6 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
     eccentricity = 0.0
     longitude_ascending_nodes = 0.0
     mean_per_ano = 0.0
-
-    # Check if conditioning is needed
-    condition = 0
-    if wf_gen.metadata["implemented_domain"] == 'time':
-        condition = 1
 
     # Adjust deltaT depending on sampling rate
     f_nyquist = maximum_frequency
@@ -442,7 +446,7 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
                      'meanPerAno' : mean_per_ano * u.rad,
                      'deltaT': deltaT *u.s,
                      # 'ModeArray': mode_array,
-                     'condition': condition
+                     'condition': 1
                      }
 
     if mode_array is not None:
@@ -697,12 +701,14 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
     E_tilde.data.data *= frequency_bounds_2
     
     # plt.loglog(frequency_array_2, np.abs(A_tilde.data.data))
+    # plt.savefig("test.png")
 
     indnzero_res = np.argwhere(np.abs(A_tilde.data.data) > 0)
     indbeg_res = indnzero_res[0, 0]
 
     A_new = np.zeros_like(frequency_array, dtype=complex)
     E_new = np.zeros_like(frequency_array, dtype=complex)
+    T_new = np.zeros_like(frequency_array, dtype=complex)
 
     if len(A_tilde.data.data) > len(frequency_array):
         logger.debug("GWsignal waveform longer than bilby's `frequency_array`" +
@@ -719,24 +725,28 @@ def lisa_LW_gwsignal_binary_black_hole_pSEOB(frequency_array, mass_1, mass_2, lu
     A_new *= frequency_bounds
     E_new *= frequency_bounds
 
-    if condition:
-        dt = 1 / A_tilde.deltaF + float(A_tilde.epoch)
-        time_shift = np.exp(-1j * 2 * np.pi * dt * frequency_array[frequency_bounds])
-        A_new[frequency_bounds] *= time_shift
-        E_new[frequency_bounds] *= time_shift
+    dt = 1 / A_tilde.deltaF + float(A_tilde.epoch)
+    time_shift = np.exp(-1j * 2 * np.pi * dt * frequency_array[frequency_bounds])
+    A_new[frequency_bounds] *= time_shift
+    E_new[frequency_bounds] *= time_shift
 
     tape_fact = 1e-3
-    indA = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
-    indE = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)[0,-1]
 
-    A_new[indA+1:] = [0] * (len(A_new) - indA - 1)
-    E_new[indE+1:] = [0] * (len(E_new) - indE - 1)
+    max_idx_A = np.argmax(np.abs(A_new))
+    max_idx_E = np.argmax(np.abs(E_new))
 
-    _waveform_dict = {"LISA_A": A_new, "LISA_E": E_new}
+    # Find the first index after max_idx_A where the condition is satisfied
+    indices_A = np.argwhere(np.abs(A_new) < np.amax(np.abs(A_new)) * tape_fact)
+    indA = indices_A[indices_A > max_idx_A].min() if np.any(indices_A > max_idx_A) else len(A_new)
+    A_new[indA:] = 0
 
-    _implemented_channels = ["LISA_A", "LISA_E"]
+    indices_E = np.argwhere(np.abs(E_new) < np.amax(np.abs(E_new)) * tape_fact)
+    indE = indices_E[indices_E > max_idx_E].min() if np.any(indices_E > max_idx_E) else len(E_new)
+    E_new[indE:] = 0
+
+    _waveform_dict = {"LISA_A": A_new, "LISA_E": E_new, "LISA_T": T_new}
+
     _waveform_dict = LISAPolarizationDict(
         {key: _waveform_dict.get(key, None) for key in _implemented_channels}
     )
-
     return _waveform_dict
