@@ -1,17 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import lal
-import lalsimulation as lalsim
-
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
-from bbhx.utils.transform import LISA_to_SSB
 
 from bilby.core import utils
 from bilby.core.utils import logger
 from bilby.gw.conversion import bilby_to_lalsimulation_spins
+from bbhx.utils.transform import LISA_to_SSB
 
 from .source import LISAPolarizationDict
-from .source_utils import lisa_response_LW, fft_lisa_response
+from .source_utils import lisa_response_LW, fft_lisa_response, plot_fd_response
 
 
 def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distance, 
@@ -33,6 +28,7 @@ def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distan
         mode_array=None,
         pn_amplitude_order=0,
         ifos=_implemented_channels,
+        debug=False,
     )
     waveform_kwargs.update(kwargs)
 
@@ -43,6 +39,7 @@ def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distan
     catch_waveform_errors = waveform_kwargs['catch_waveform_errors']
     mode_array = waveform_kwargs['mode_array']
     pn_amplitude_order = waveform_kwargs['pn_amplitude_order']
+    debug = waveform_kwargs['debug']
 
     waveform_kwargs.pop("ifos")
 
@@ -186,6 +183,10 @@ def lisa_binary_black_hole_LW(frequency_array, mass_1, mass_2, luminosity_distan
     _waveform_dict = LISAPolarizationDict(
         {key: _waveform_dict.get(key, None) for key in _implemented_channels}
     )
+
+    if debug == True:
+        plot_fd_response(frequency_array, A_new, E_new)
+
     return _waveform_dict
 
 
