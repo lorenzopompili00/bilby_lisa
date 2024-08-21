@@ -165,13 +165,6 @@ def fft_lisa_response(
     plan = lal.CreateForwardREAL8FFTPlan(chirplen, 0)
     lal.REAL8TimeFreqFFT(A_tilde, A_lal, plan)
 
-    frequency_array_2 = np.arange(len(A_tilde.data.data)) * A_tilde.deltaF
-    frequency_bounds_2 = (frequency_array_2 >= minimum_frequency) * (
-        frequency_array_2 <= maximum_frequency
-    )
-
-    A_tilde.data.data *= frequency_bounds_2
-
     # import matplotlib.pyplot as plt
     # plt.loglog(frequency_array_2, np.abs(A_tilde.data.data))
     # plt.xlim(minimum_frequency, maximum_frequency)
@@ -216,7 +209,7 @@ def fft_lisa_response(
     return A_new
 
 
-def plot_fd_response(frequency_array, A, E):
+def plot_fd_response(frequency_array, f_min, f_max, A, E):
 
     fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12, 4))
     ax1.loglog(frequency_array, np.sqrt(frequency_array) * np.abs(A))
@@ -230,13 +223,15 @@ def plot_fd_response(frequency_array, A, E):
     Sn_char_strain = get_sensitivity(fn, sens_fn="E1TDISens", return_type="char_strain")
     ax2.loglog(fn, Sn_char_strain, c="k")
 
-    ax1.set_xlabel(r"$f~[\rm{Hz}]$")
-    ax2.set_xlabel(r"$f~[\rm{Hz}]$")
+    for ax in [ax1, ax2]:
+        ax.set_xlabel(r"$f~[\rm{Hz}]$")
+        ax.set_xlim(f_min, f_max)
 
     ax1.set_ylabel(r"$\tilde{A}\sqrt{f}~[\rm{Hz}^{1/2}]$")
     ax2.set_ylabel(r"$\tilde{E}\sqrt{f}~[\rm{Hz}^{1/2}]$")
 
+
     plt.tight_layout()
     plt.savefig("test_response.png")
 
-    fig.close()
+    plt.close()

@@ -42,6 +42,7 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
     debug = waveform_kwargs['debug']
 
     waveform_kwargs.pop("ifos")
+    waveform_kwargs.pop("debug")
 
     if pn_amplitude_order != 0:
         # This is to mimic the behaviour in
@@ -191,7 +192,10 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
     )
 
     if debug == True:
-        plot_fd_response(frequency_array, A_new, E_new)
+        plot_fd_response(frequency_array, minimum_frequency, maximum_frequency, A_new, E_new)
+        np.savetxt("frequency_array.txt", frequency_array)
+        print(f"minimum_frequency: {minimum_frequency}")
+        print(f"maximum_frequency: {maximum_frequency}")
 
     return _waveform_dict
 
