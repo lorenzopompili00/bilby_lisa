@@ -193,9 +193,6 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
 
     if debug == True:
         plot_fd_response(frequency_array, minimum_frequency, maximum_frequency, A_new, E_new)
-        np.savetxt("frequency_array.txt", frequency_array)
-        print(f"minimum_frequency: {minimum_frequency}")
-        print(f"maximum_frequency: {maximum_frequency}")
 
     return _waveform_dict
 
