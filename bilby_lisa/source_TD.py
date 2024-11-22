@@ -160,7 +160,7 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
 
     A_new = fft_lisa_response(
         A,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
@@ -169,7 +169,7 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
     
     E_new = fft_lisa_response(
         E,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
@@ -178,7 +178,7 @@ def lisa_binary_black_hole_TD(frequency_array, mass_1, mass_2, luminosity_distan
 
     T_new = fft_lisa_response(
         T,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
@@ -433,7 +433,7 @@ def lisa_binary_black_hole_pseob_TD(frequency_array, mass_1, mass_2, luminosity_
 
     A_new = fft_lisa_response(
         A,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
@@ -442,7 +442,7 @@ def lisa_binary_black_hole_pseob_TD(frequency_array, mass_1, mass_2, luminosity_
     
     E_new = fft_lisa_response(
         E,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
@@ -451,7 +451,7 @@ def lisa_binary_black_hole_pseob_TD(frequency_array, mass_1, mass_2, luminosity_
 
     T_new = fft_lisa_response(
         T,
-        geocent_time,
+        hSp.epoch.value + geocent_time,
         deltaT,
         frequency_array,
         minimum_frequency,
